@@ -82,6 +82,7 @@ textarea{height:clamp(120px,22vh,220px)}
 .fun{margin-top:14px;border:2px dashed var(--ac2);border-radius:16px;padding:12px}.mc{font-size:18px;font-weight:700;margin-bottom:8px}.fout{font-size:clamp(20px,5vw,30px);font-weight:800;min-height:34px;color:var(--ac2);word-break:break-word}
 @keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px) rotate(-1deg)}40%{transform:translateX(12px) rotate(1deg)}60%{transform:translateX(-8px)}80%{transform:translateX(8px)}}.shake{animation:shk .5s}
 .er{position:fixed;top:-40px;font-size:32px;pointer-events:none;z-index:49;animation:er linear forwards}@keyframes er{to{transform:translateY(115vh) rotate(360deg)}}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}.gd{background:var(--card);color:var(--tx);border-radius:18px;padding:18px;max-width:560px;max-height:86vh;overflow:auto;text-align:left}.gd h2{margin:0 0 8px;font-size:20px}.gd ol,.gd ul{padding-left:20px;margin:6px 0}.gd li{margin:6px 0}.gd p{margin:10px 0}
 </style>
 </head>
 <body>
@@ -115,8 +116,10 @@ textarea{height:clamp(120px,22vh,220px)}
       <button data-t="fish">🎣 Câu cá</button>
       <button data-t="crit">🧩 Tiêu chí</button>
       <button data-t="bracket">🏆 Đấu loại</button>
+      <button id="help" style="background:var(--ac2);color:#fff;border-color:var(--ac2)">❓ Hướng dẫn</button>
     </div>
 
+    <div class="mut" id="hint" style="margin:0 0 10px"></div>
     <div id="p-wheel">
       <div class="wheelbox"><canvas id="cv" width="760" height="760"></canvas><div class="pin"></div></div>
       <div class="result" id="wres">Bấm quay để chọn!</div>
@@ -175,7 +178,7 @@ function refresh(){
   drawWheel();
 }
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
-function record(n){if(!picked.includes(n))picked.push(n);refresh();window.celebrate&&celebrate(n)}
+function record(n){prioUsed(n);if(!picked.includes(n))picked.push(n);refresh();window.celebrate&&celebrate(n)}
 
 /* Wheel */
 function drawWheel(){
@@ -203,7 +206,7 @@ function drawWheel(){
 $("#spin").onclick=()=>{
   if(spinning)return;
   const p=pool();if(!p.length){$("#wres").textContent="Hết danh sách! Bấm “Làm mới lượt”.";return}
-  const i=Math.floor(Math.random()*p.length),seg=2*Math.PI/p.length;
+  const i=rigIdx(p),seg=2*Math.PI/p.length;
   const jitter=(Math.random()-.5)*seg*.7;
   let target=1.5*Math.PI-(i+.5)*seg+jitter;
   const start=rot,turns=5+Math.floor(Math.random()*3);
@@ -225,7 +228,7 @@ $("#draw").onclick=()=>{
   if(drawing)return;
   const p=pool(),s=$("#sl");
   if(!p.length){s.textContent="Hết danh sách!";return}
-  const win=p[Math.floor(Math.random()*p.length)];
+  const win=p[rigIdx(p)];
   drawing=true;$("#draw").disabled=true;s.classList.remove("done");
   let d=50,n=0;const total=22+Math.floor(Math.random()*8);
   (function step(){
@@ -256,48 +259,48 @@ function cards(gid,emo,rid,task){
   const p=shuffle(pool()).slice(0,30),g=$(gid),r=$(rid);r.textContent="";
   g.innerHTML=p.length?"":'<span class="mut">Hết danh sách!</span>';
   p.forEach((n,i)=>{const b=document.createElement("button");b.className="cd";b.textContent=emo;b.style.setProperty("--h",(i*47)%360);
-    b.onclick=()=>{b.textContent=task?"✨":"💥";b.disabled=true;beep(220,.15);win(r,n,task?" — "+rt():"");if(!task)setTimeout(()=>b.style.visibility="hidden",350)};g.appendChild(b)});
+    b.onclick=()=>{b.textContent=task?"✨":"💥";b.disabled=true;beep(220,.15);win(r,rigPick(n),task?" — "+rt():"");if(!task)setTimeout(()=>b.style.visibility="hidden",350)};g.appendChild(b)});
 }
 $("#blb").onclick=()=>cards("#bl","🎈","#blr",0);
 $("#gfb").onclick=()=>cards("#gf","🎁","#gfr",1);
 
 $("#pab").onclick=()=>{const p=shuffle(pool()).slice(0,30),s=$("#sk"),r=$("#par");r.textContent="";s.innerHTML="";if(!p.length){r.textContent="Hết danh sách!";return}
-  let done=false;p.forEach((n,i)=>{const d=document.createElement("div");d.className="ch";d.style.left=(i*100/p.length)+"%";d.style.width=100/p.length+"%";d.style.animationDuration=(3+Math.random()*4)+"s";d.textContent="🪂";d.style.fontSize=Math.max(18,Math.min(30,300/p.length))+"px";d.onanimationend=()=>{if(done)return;done=true;beep(700,.3);win(r,n)};s.appendChild(d)})};
+  const RG=rigName(p);let done=false;p.forEach((n,i)=>{const d=document.createElement("div");d.className="ch";d.style.left=(i*100/p.length)+"%";d.style.width=100/p.length+"%";d.style.animationDuration=(n===RG?2.5:3.2+Math.random()*4)+"s";d.textContent="🪂";d.style.fontSize=Math.max(18,Math.min(30,300/p.length))+"px";d.onanimationend=()=>{if(done)return;done=true;beep(700,.3);win(r,n)};s.appendChild(d)})};
 
 $("#rcb").onclick=async()=>{const g=++G,p=shuffle(pool()).slice(0,30),E=["🐎","🐢","🐇","🚗","🚀","🐕","🦆","🛵"],o=$("#rc"),r=$("#rcr");r.textContent="";
   if(!p.length){r.textContent="Hết danh sách!";return}
   const H=Math.max(22,Math.min(46,340/p.length));o.innerHTML=p.map((n,i)=>`<div class="lane" style="height:${H}px"><span class="rr" id="rr${i}" style="top:${H*.12}px;font-size:${H*.65}px;white-space:nowrap">${E[i%E.length]}<small style="font-size:${Math.min(13,H*.5)}px;color:var(--mut);margin-left:4px">${esc(n)}</small></span></div>`).join("");
-  const pos=p.map(()=>0);
-  while(g===G){await sleep(110);let w=-1;pos.forEach((_,i)=>{pos[i]+=Math.random()*3.2;$("#rr"+i).style.left=Math.min(pos[i],78)+"%";if(pos[i]>=78&&w<0)w=i});if(w>=0){beep(800,.3);win(r,p[w]);break}}};
+  const pos=p.map(()=>0),RGR=rigName(p);
+  while(g===G){await sleep(110);let w=-1;pos.forEach((_,i)=>{pos[i]+=Math.random()*3.2*(p[i]===RGR?1.35:1);if(RGR&&p[i]!==RGR)pos[i]=Math.min(pos[i],77);$("#rr"+i).style.left=Math.min(pos[i],78)+"%";if(pos[i]>=78&&w<0)w=i});if(w>=0){beep(800,.3);win(r,p[w]);break}}};
 
 $("#bmb").onclick=async()=>{const g=++G,p=pool(),b=$("#bm");b.classList.remove("done");if(!p.length){b.textContent="Hết danh sách!";return}
-  const end=Date.now()+4000+Math.random()*6000;let last=0,i;
-  while(g===G){const left=end-Date.now();if(left<=0)break;do{i=Math.floor(Math.random()*p.length)}while(i===last&&p.length>1);last=i;b.textContent="💣 "+p[i];beep(400+Math.max(0,6000-left)/12,.05);await sleep(Math.max(120,left/8))}
+  const end=Date.now()+4000+Math.random()*6000;let last=0,i;const RB=rigIdx(p,true);
+  while(g===G){const left=end-Date.now();if(left<=0)break;do{i=Math.floor(Math.random()*p.length)}while(i===last&&p.length>1);if(left<1000&&RB>=0)i=RB;last=i;b.textContent="💣 "+p[i];beep(400+Math.max(0,6000-left)/12,.05);await sleep(Math.max(120,left/8))}
   if(g===G){b.textContent="💥 "+p[last];b.classList.add("done");beep(120,.5);shake();record(p[last])}};
 
 $("#spb").onclick=async()=>{const g=++G,p=shuffle(pool()).slice(0,24),s=$("#sp");s.innerHTML=p.map(n=>`<div class="sc">${esc(n)}</div>`).join("");if(!p.length){s.textContent="Hết danh sách!";return}
-  const c=[...s.children];let d=60,last=0,i=0;const steps=18+Math.floor(Math.random()*10);
-  for(let k=0;k<steps&&g===G;k++){if(k===steps-6)drum(1800);c[last].classList.remove("lit");i=Math.floor(Math.random()*p.length);c[i].classList.add("lit");last=i;beep(500,.03);await sleep(d);d*=1.12}
+  const c=[...s.children];let d=60,last=0,i=0;const RS=rigIdx(p,true);const steps=18+Math.floor(Math.random()*10);
+  for(let k=0;k<steps&&g===G;k++){if(k===steps-6)drum(1800);c[last].classList.remove("lit");i=Math.floor(Math.random()*p.length);if(k===steps-1&&RS>=0)i=RS;c[i].classList.add("lit");last=i;beep(500,.03);await sleep(d);d*=1.12}
   if(g===G){c[i].classList.add("win");beep(800,.3);record(p[i])}};
 
 $("#dcb").onclick=async()=>{const g=++G,p=pool(),d=$("#dc"),t=$("#dct");d.classList.remove("done");t.textContent="";if(!p.length){d.textContent="Hết danh sách!";return}
   const F="⚀⚁⚂⚃⚄⚅";for(let k=0;k<14&&g===G;k++){if(k===9)drum(1000);d.textContent=F[k%6]+" "+p[Math.floor(Math.random()*p.length)];beep(300+k*20,.04);await sleep(60+k*14)}
-  if(g===G){const n=p[Math.floor(Math.random()*p.length)];d.textContent="🎲 "+n;d.classList.add("done");t.textContent="Nhiệm vụ: "+rt();record(n)}};
+  if(g===G){const n=p[rigIdx(p)];d.textContent="🎲 "+n;d.classList.add("done");t.textContent="Nhiệm vụ: "+rt();record(n)}};
 
 $("#fib").onclick=()=>{const p=shuffle(pool()).slice(0,30),s=$("#pd"),r=$("#fir");s.innerHTML="";r.textContent=p.length?"Bấm vào một chú cá để câu!":"Hết danh sách!";
   p.forEach((n,i)=>{const d=document.createElement("div");d.className="fs";d.style.top=((i%10)*9+2)+"%";d.style.animationDuration=(3+Math.random()*4)+"s";d.style.animationDelay="-"+Math.random()*5+"s";d.textContent="🐟";
-    d.onclick=()=>{d.textContent="🎣";d.style.animationPlayState="paused";beep(500,.2);win(r,n)};s.appendChild(d)})};
+    d.onclick=()=>{d.textContent="🎣";d.style.animationPlayState="paused";beep(500,.2);win(r,rigPick(n))};s.appendChild(d)})};
 
-$("#crb").onclick=async()=>{const a=names(),p=pool(),c=$("#cr"),r=$("#crr");r.textContent="";if(!p.length){c.textContent="Hết danh sách!";return}
+$("#crb").onclick=async()=>{const a=names(),p=pool(),RGC=rigName(p),c=$("#cr"),r=$("#crr");r.textContent="";if(!p.length){c.textContent="Hết danh sách!";return}
   const idx=n=>a.indexOf(n)+1,L=n=>n[0].toUpperCase(),ls=[...new Set(p.map(L))],ch=ls[Math.floor(Math.random()*ls.length)],t=1+Math.floor(Math.random()*3);
-  const o=[["Số thứ tự chẵn",n=>idx(n)%2===0],["Số thứ tự lẻ",n=>idx(n)%2===1],["Tên bắt đầu bằng chữ “"+ch+"”",n=>L(n)===ch],["Tổ "+t+" (chia danh sách làm 3 tổ)",n=>Math.ceil(idx(n)*3/a.length)===t]].filter(x=>p.some(x[1]));
+  const o=[["Số thứ tự chẵn",n=>idx(n)%2===0],["Số thứ tự lẻ",n=>idx(n)%2===1],["Tên bắt đầu bằng chữ “"+ch+"”",n=>L(n)===ch],["Tổ "+t+" (chia danh sách làm 3 tổ)",n=>Math.ceil(idx(n)*3/a.length)===t]].filter(x=>p.some(x[1])&&(!RGC||x[1](RGC)));
   const k=o[Math.floor(Math.random()*o.length)],sub=p.filter(k[1]);c.textContent="🧩 "+k[0]+" ("+sub.length+" người)";beep(500,.1);await sleep(1400);
-  win(r,sub[Math.floor(Math.random()*sub.length)])};
+  win(r,RGC||sub[Math.floor(Math.random()*sub.length)])};
 
 let BR=null;
 function showBr(){$("#br").innerHTML=(BR.h.length?"":'<p class="mut">Thí sinh: '+BR.cur.map(esc).join(", ")+"</p>")+BR.h.map((rd,i)=>`<div class="g" style="margin:6px 0"><b>Vòng ${i+1}</b>${rd.map(m=>`<div>${esc(m[0])} ⚔ ${m[1]?esc(m[1]):"(miễn đấu)"} → <b style="display:inline">${esc(m[2])}</b></div>`).join("")}</div>`).join("")+(BR.cur.length===1&&BR.h.length?`<div class="result pop">🏆 ${esc(BR.cur[0])}</div>`:"")}
 $("#brb").onclick=()=>{const p=shuffle(pool()).slice(0,32);if(p.length<2){$("#br").innerHTML='<p class="mut">Cần ít nhất 2 người trong danh sách.</p>';return}BR={cur:p,h:[]};showBr();$("#brn").disabled=false};
-$("#brn").onclick=()=>{if(!BR||BR.cur.length<2)return;const m=[],nx=[];for(let i=0;i<BR.cur.length;i+=2){const a=BR.cur[i],b=BR.cur[i+1],w=b===undefined?a:(Math.random()<.5?a:b);m.push([a,b,w]);nx.push(w)}BR.h.push(m);BR.cur=nx;beep(500,.1);showBr();if(nx.length===1){$("#brn").disabled=true;beep(800,.4);record(nx[0])}};
+$("#brn").onclick=()=>{if(!BR||BR.cur.length<2)return;const m=[],nx=[],RGB=rigName(BR.cur);for(let i=0;i<BR.cur.length;i+=2){const a=BR.cur[i],b=BR.cur[i+1],w=b===undefined?a:(a===RGB?a:b===RGB?b:(Math.random()<.5?a:b));m.push([a,b,w]);nx.push(w)}BR.h.push(m);BR.cur=nx;beep(500,.1);showBr();if(nx.length===1){$("#brn").disabled=true;beep(800,.4);record(nx[0])}};
 
 /* Fun */
 window.MUTE=false;
@@ -331,15 +334,61 @@ function shake(){if(!FX)return;const s=document.querySelector(".stage");s.classL
 function rain(){const E=["🎉","🍕","🦄","⭐","🍩","🚀","🎈"];for(let i=0;i<18;i++){const e=document.createElement("span");e.className="er";e.textContent=E[Math.floor(Math.random()*E.length)];e.style.left=Math.random()*96+"vw";e.style.animationDuration=(2+Math.random()*1.8)+"s";e.style.animationDelay=Math.random()*.6+"s";e.onanimationend=()=>e.remove();document.body.appendChild(e)}}
 const fxb=document.createElement("button");fxb.className="ghost";fxb.style.cssText="min-height:32px;padding:2px 10px";fxb.textContent="✨ Hiệu ứng: bật";fxb.onclick=()=>{FX=!FX;fxb.textContent="✨ Hiệu ứng: "+(FX?"bật":"tắt")};$("#mute").after(fxb);
 
+/* Teacher */
+let PQ=[],PE=2,SINCE=0;
+try{const t=JSON.parse(localStorage.getItem("picker-prio-v1")||"{}");PQ=t.q||[];if(typeof t.e==="number")PE=t.e}catch(e){}
+function savePrio(){try{localStorage.setItem("picker-prio-v1",JSON.stringify({q:PQ,e:PE}))}catch(e){}}
+function same(n,x){const a=n.toLowerCase(),b=x.toLowerCase();return a===b||a.endsWith(" "+b)}
+function rigName(p){if(SINCE<PE)return null;for(const x of PQ){const m=p.find(n=>same(n,x));if(m)return m}return null}
+function rigIdx(p,soft){const r=rigName(p);if(r)return p.indexOf(r);return soft?-1:Math.floor(Math.random()*p.length)}
+function rigPick(n){return rigName(pool())||n}
+function pstat(){const e=$("#pst");if(e)e.textContent=PQ.length?"Hàng đợi: "+PQ.length+" tên":"Hàng đợi trống"}
+function prioUsed(n){if(PQ.some(x=>same(n,x))){PQ=PQ.filter(x=>!same(n,x));SINCE=0;savePrio();const t=$("#pq");if(t)t.value=PQ.join("\n");pstat()}else SINCE++}
+const tp=document.createElement("div");tp.className="card hide";tp.style.cssText="margin-top:12px;border:2px dashed var(--ac2)";
+tp.innerHTML='<b>🔒 Dành cho giáo viên</b><p class="mut" style="margin:6px 0">Tên cần gọi (mỗi dòng một tên, gọi lần lượt). Có thể chỉ gõ tên riêng, ví dụ “Lan”. Mở/đóng bằng cách bấm nhanh 5 lần vào tiêu đề.</p><textarea id="pq" style="height:90px" spellcheck="false"></textarea><label class="row">Ưu tiên sau <input type="number" id="pe" min="0" max="20" style="width:60px;padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit"> lượt ngẫu nhiên</label><p class="mut" id="pst"></p>';
+document.querySelector(".wrap>section:first-child").appendChild(tp);
+$("#pq").value=PQ.join("\n");$("#pe").value=PE;pstat();
+$("#pq").oninput=()=>{PQ=$("#pq").value.split("\n").map(s=>s.trim()).filter(Boolean);savePrio();pstat()};
+$("#pe").oninput=e=>{PE=Math.max(0,parseInt(e.target.value)||0);savePrio()};
+let tc=0,tt=0;document.querySelector("h1").onclick=()=>{const t=Date.now();tc=t-tt<1500?tc+1:1;tt=t;if(tc>=5){tc=0;tp.classList.toggle("hide")}};
+
+/* Guide + teacher v2 */
+const HINTS={wheel:"Bấm QUAY để vòng quay chọn một bạn.",slot:"Bấm GỌI TÊN: tên nhảy liên tục rồi dừng lại ở một bạn.",group:"Chọn số nhóm hoặc số người mỗi nhóm, rồi bấm Chia nhóm.",balloon:"Chạm vào một quả bóng bay để làm nổ và xem tên.",gift:"Chạm vào một hộp quà để mở ra tên và nhiệm vụ.",para:"Bấm THẢ DÙ: chiếc dù nào chạm đất trước thì bạn đó được gọi.",race:"Bấm XUẤT PHÁT: ai về đích trước sẽ được gọi.",bomb:"Bấm CHUYỀN BOM: bom nổ ở bạn nào thì bạn đó trả lời.",spot:"Bấm SOI ĐÈN: đèn dừng ở ai thì người đó được chọn.",dice:"Bấm GIEO XÚC XẮC để chọn một bạn kèm nhiệm vụ.",fish:"Bấm THẢ CÁ rồi chạm vào một chú cá để câu tên.",crit:"Bấm CHỌN TIÊU CHÍ: app chọn một tiêu chí rồi chọn bạn trong nhóm đó.",bracket:"Bấm TẠO NHÁNH ĐẤU, rồi bấm Đấu vòng tiếp đến khi có người vô địch."};
+$("#hint").textContent=HINTS.wheel;
+function showGuide(){
+  if($("#guide"))return;
+  const o=document.createElement("div");o.id="guide";o.className="ov";
+  o.innerHTML='<div class="gd"><h2>👋 Hướng dẫn nhanh</h2><ol><li><b>Nhập tên lớp:</b> dán danh sách học viên vào ô bên trái, mỗi dòng một tên.</li><li><b>Chọn trò chơi:</b> bấm một tab phía trên (🎡 Vòng quay, 🎈 Bóng bay, 🏎️ Đua…).</li><li><b>Bấm nút lớn</b> (QUAY, GỌI TÊN…) và cả lớp cùng xem kết quả!</li></ol><p class="mut"><b>Mẹo:</b> bật “Không gọi lại người đã được chọn” để bạn nào cũng có lượt; bấm “Làm mới lượt” để bắt đầu lại. Chiếu lên màn hình lớp sẽ vui hơn.</p><p><b>Sau khi chọn được một bạn</b> sẽ có pháo giấy và một khung bên dưới với 3 nút: 🃏 Thử thách (rút thẻ vui), ⏱️ 10 giây (đếm ngược trả lời), ⭐ Tặng sao (ghi vào bảng sao).</p><p><b>Âm thanh và hiệu ứng:</b> dùng nút 🔊 và ✨ trong Bảng sao để tắt khi cần yên lặng.</p><p><b>Giáo viên:</b> nút “🔒 Cài đặt giáo viên” ở cột bên trái có thêm tùy chọn riêng.</p><div class="ctl"><button id="gok">Bắt đầu thôi! 🚀</button></div></div>';
+  document.body.appendChild(o);
+  const c=()=>{o.remove();try{localStorage.setItem("picker-seen","1")}catch(e){}};
+  $("#gok").onclick=c;o.onclick=e=>{if(e.target===o)c()};
+}
+$("#help").onclick=showGuide;
+try{if(!localStorage.getItem("picker-seen"))showGuide()}catch(e){}
+
+tp.innerHTML='<b>🔒 Dành cho giáo viên</b><ol class="mut" style="margin:8px 0;padding-left:18px;font-size:13px"><li>Chạm vào tên bạn muốn gọi trước (số 1, 2, 3… là thứ tự được gọi).</li><li>Bấm “Xong” để đóng bảng này.</li><li>Vào lớp, bấm quay hoặc bốc thăm như bình thường: các bạn đã chọn sẽ xuất hiện.</li></ol><div class="hist" id="pchips"></div><label class="row">Ưu tiên sau <input type="number" id="pe" min="0" max="20" style="width:60px;padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit"> lượt ngẫu nhiên thật</label><p class="mut" style="margin:0 0 8px;font-size:12px">Số 2 nghĩa là 2 lượt đầu ra ngẫu nhiên thật, rồi mới đến bạn đã chọn. Đặt 0 nếu muốn gọi ngay lượt đầu.</p><div class="ctl" style="justify-content:flex-start"><button id="pdone">Xong</button><button class="ghost" id="pclr">Bỏ chọn hết</button></div><p class="mut" id="pst"></p>';
+$("#pe").value=PE;$("#pe").oninput=e=>{PE=Math.max(0,parseInt(e.target.value)||0);savePrio()};
+$("#pdone").onclick=()=>tp.classList.add("hide");
+$("#pclr").onclick=()=>{PQ=[];savePrio();rchips()};
+function rchips(){const a=names(),box=$("#pchips");if(!box)return;box.innerHTML="";
+  a.forEach(n=>{const k=PQ.findIndex(x=>same(n,x)),b=document.createElement("button");b.className="chip";
+    b.style.cssText="min-height:34px;cursor:pointer;"+(k>=0?"background:var(--ac);color:#fff;border-color:var(--ac)":"color:var(--tx)");
+    b.textContent=(k>=0?(k+1)+". ":"")+n;b.onclick=()=>{if(k>=0)PQ.splice(k,1);else PQ.push(n);savePrio();rchips()};box.appendChild(b)});pstat()}
+function prioUsed(n){if(PQ.some(x=>same(n,x))){PQ=PQ.filter(x=>!same(n,x));SINCE=0;savePrio();rchips()}else SINCE++}
+const tgl=()=>{tp.classList.toggle("hide");if(!tp.classList.contains("hide")){rchips();tp.scrollIntoView({behavior:"smooth",block:"nearest"})}};
+let tc2=0,tt2=0;document.querySelector("h1").onclick=()=>{const t=Date.now();tc2=t-tt2<1500?tc2+1:1;tt2=t;if(tc2>=5){tc2=0;tgl()}};
+const tb=document.createElement("button");tb.className="ghost";tb.textContent="🔒 Cài đặt giáo viên";tb.style.cssText="margin-top:12px;width:100%";tb.onclick=tgl;
+tp.parentNode.insertBefore(tb,tp);
+
 /* UI */
 $("#tabs").onclick=e=>{
   const t=e.target.dataset.t;if(!t)return;
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b===e.target));
-  G++;document.querySelectorAll("[id^=p-]").forEach(x=>x.classList.toggle("hide",x.id!=="p-"+t));
+  $("#hint").textContent=HINTS[t]||"";G++;document.querySelectorAll("[id^=p-]").forEach(x=>x.classList.toggle("hide",x.id!=="p-"+t));
   if(t==="balloon"&&!$("#bl").children.length)$("#blb").click();
   if(t==="gift"&&!$("#gf").children.length)$("#gfb").click();
 };
-$("#names").oninput=()=>{save();refresh()};
+$("#names").oninput=()=>{save();refresh();if(!tp.classList.contains("hide"))rchips()};
 $("#uniq").onchange=refresh;
 $("#reset").onclick=()=>{picked=[];$("#wres").textContent="Bấm quay để chọn!";$("#sl").textContent="?";$("#sl").classList.remove("done");refresh()};
 $("#shuf").onclick=()=>{$("#names").value=shuffle(names()).join("\n");save();refresh()};
